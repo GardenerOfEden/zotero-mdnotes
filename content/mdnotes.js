@@ -191,7 +191,12 @@ function getRelatedItems(item) {
 }
 
 function getMetadata(item) {
-  let metadataString = "## Metadata\n\n";
+  let metadataString = ``;
+
+  // Standalone notes have no metadata heading
+  if (Zotero.ItemTypes.getName(item.itemTypeID) !== "note") {
+    metadataString += "## Metadata\n\n";
+  }
 
   if (getPref("export_type")) {
     var zoteroType = Zotero.ItemTypes.getName(item.getField("itemTypeID"));
@@ -258,6 +263,12 @@ function getMetadata(item) {
     metadataString += `\n### Abstract\n\n ${abstract}\n`;
   }
 
+  // Also export standalone note body content
+  if (Zotero.ItemTypes.getName(item.itemTypeID) == "note") {
+    let noteContent = item.getNote();
+    metadataString += `\n ${noteToMarkdown(noteContent).content}\n`;
+  }
+
   return metadataString;
 }
 
@@ -309,13 +320,7 @@ function getZoteroNotes(item) {
     }
   }
 
-  // Also export standalone note body content
-  if (Zotero.ItemTypes.getName(item.itemTypeID) == "note") {
-    let noteContent = item.getNote();
-    noteArray.push(noteToMarkdown(noteContent));
-  }
-
-  return noteArray;
+  return noteArray.length ? noteArray : null;
 }
 
 function getItemAttachments(item) {
@@ -400,7 +405,9 @@ function noteToMarkdown(noteContent) {
 
     if (i === 0) {
       noteMD.title = formatNoteTitle(para.textContent);
-      continue;
+
+      // Include title paragraph in body of note
+      //continue;
     }
 
     if (para.innerHTML) {
@@ -442,7 +449,11 @@ function noteToMarkdown(noteContent) {
 }
 
 function getItemTitle(item) {
-  return `# ${item.getField("title")}\n\n`;
+  if (Zotero.ItemTypes.getName(item.itemTypeID) !== "note") {
+    return `# ${item.getField("title")}\n\n`;
+  }
+  // Standalone notes do not have titles
+  return ``;
 }
 
 function getFileName(item) {
@@ -514,7 +525,7 @@ function getFileContents(itemExport) {
   var fileContents = "";
   fileContents += itemExport.title;
   fileContents += itemExport.metadata;
-
+  
   if (itemExport.notes) {
     fileContents += `\n${getPref("export_notes_heading")}\n\n`;
 
