@@ -84,12 +84,17 @@ function getDates(item) {
 }
 
 function getCiteKey(item) {
-  if (typeof Zotero.BetterBibTeX === "object" && Zotero.BetterBibTeX !== null) {
-    var bbtItem = Zotero.BetterBibTeX.KeyManager.get(item.getField("id"));
-    return bbtItem.citekey;
+  if (Zotero.ItemTypes.getName(item.itemTypeID) !== "note") {
+    if (typeof Zotero.BetterBibTeX === "object" && Zotero.BetterBibTeX !== null) {
+      var bbtItem = Zotero.BetterBibTeX.KeyManager.get(item.getField("id"));
+      return bbtItem.citekey;
+    }
+    return "undefined";
   }
-
-  return "undefined";
+  else {
+    // Fake citekeys for standalone notes
+    return item.getField("title").substring(0,9);
+  }
 }
 
 function getLinks(item) {
@@ -283,8 +288,17 @@ function lowerCaseDashTitle(content) {
   return content.replace(/\s+/g, "-").toLowerCase();
 }
 
+function getItemNotes(item) {
+  // Wrapper to guard against operations on standalone note items
+  // (which throw an exception of item.getNotes() is called)
+  if (Zotero.ItemTypes.getName(item.itemTypeID) !== "note") {
+    return item.getNotes();
+  }
+  return [];
+}
+
 function getZoteroNotes(item) {
-  var noteIDs = item.getNotes();
+  var noteIDs = getItemNotes(item);
   var noteArray = [];
 
   if (noteIDs) {
@@ -295,11 +309,26 @@ function getZoteroNotes(item) {
     }
   }
 
+  // Also export standalone note body content
+  if (Zotero.ItemTypes.getName(item.itemTypeID) == "note") {
+    let noteContent = item.getNote();
+    noteArray.push(noteToMarkdown(noteContent));
+  }
+
   return noteArray;
 }
 
+function getItemAttachments(item) {
+  // Wrapper to guard against operations on standalone note items
+  // (which throw an exception of item.getAttachments() is called)
+  if (Zotero.ItemTypes.getName(item.itemTypeID) !== "note") {
+    return item.getAttachments();
+  }
+  return [];
+}
+
 function getZoteroAttachments(item) {
-  let attachmentIDs = item.getAttachments();
+  let attachmentIDs = getItemAttachments(item);
   var linksArray = [];
   for (let id of attachmentIDs) {
     let attachment = Zotero.Items.get(id);
@@ -595,7 +624,7 @@ Zotero.Mdnotes = Zotero.Mdnotes || new class {
         if (outputFile.split('.').pop().toLowerCase() != "md") {
           outputFile += ".md";
         }
-        let attachmentIDs = item.getAttachments();
+        let attachmentIDs = getItemAttachments(item);
         let titleSuffix = getPref("title_suffix");
         const fileContents = getMDNoteFileContents(itemExport, fileName, titleSuffix);
         Zotero.File.putContentsAsync(outputFile, fileContents);
@@ -636,7 +665,7 @@ Zotero.Mdnotes = Zotero.Mdnotes || new class {
         Zotero.File.putContentsAsync(outputFile, fileContents);
 
         // Attach note
-        this.addLinkToMDNote(outputFile, parentItem.id, parentItem.getAttachments());
+        this.addLinkToMDNote(outputFile, parentItem.id, getItemAttachments(parentItem));
       }
     }
   }
@@ -669,7 +698,7 @@ Zotero.Mdnotes = Zotero.Mdnotes || new class {
         Zotero.File.putContentsAsync(outputFile, fileContents);
 
         // Attach note
-        this.addLinkToMDNote(outputFile, item.id, item.getAttachments());
+        this.addLinkToMDNote(outputFile, item.id, getItemAttachments(item));
       }
     }
   }
@@ -677,8 +706,8 @@ Zotero.Mdnotes = Zotero.Mdnotes || new class {
   async batchExport() {
     var items = Zotero.getActiveZoteroPane().getSelectedItems()
       .filter(item =>
-        Zotero.ItemTypes.getName(item.itemTypeID) !== "attachment" &&
-        Zotero.ItemTypes.getName(item.itemTypeID) !== "note"
+        Zotero.ItemTypes.getName(item.itemTypeID) !== "attachment" //&&
+        // Zotero.ItemTypes.getName(item.itemTypeID) !== "note"
       );
     await Zotero.Schema.schemaUpdatePromise;
 
@@ -697,7 +726,8 @@ Zotero.Mdnotes = Zotero.Mdnotes || new class {
     if (rv === fp.returnOK) {
       for (const item of items) {
         var itemExport = getItemExport(item);
-        let attachmentIDs = item.getAttachments();
+        Zotero.debug(itemExport);
+        let attachmentIDs = getItemAttachments(item);
         const path = OS.Path.normalize(fp.file);
         let titleSuffix = getPref("title_suffix");
         var fileName = getFileName(item);
