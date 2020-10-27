@@ -83,6 +83,11 @@ function getDates(item) {
   return dateString;
 }
 
+function splitStandaloneTitle(titleText) {
+  // Assuming standalone note titles are 'ID / title' or 'ID */ title'
+  return titleText.split(/ *\*?\/ *(.+)/);
+}
+
 function getCiteKey(item) {
   if (Zotero.ItemTypes.getName(item.itemTypeID) !== "note") {
     if (typeof Zotero.BetterBibTeX === "object" && Zotero.BetterBibTeX !== null) {
@@ -93,7 +98,7 @@ function getCiteKey(item) {
   }
   else {
     // Fake citekeys for standalone notes
-    return item.getField("title").substring(0,9);
+    return splitStandaloneTitle(item.getField("title")[0];
   }
 }
 
@@ -406,8 +411,8 @@ function noteToMarkdown(noteContent) {
     if (i === 0) {
       noteMD.title = formatNoteTitle(para.textContent);
 
-      // Include title paragraph in body of note
-      //continue;
+      // Include title paragraph in body of note but strip out citeKey
+      para.textContent = splitStandaloneTitle(para.textContent)[1];
     }
 
     if (para.innerHTML) {
