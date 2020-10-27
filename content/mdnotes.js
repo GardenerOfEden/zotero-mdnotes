@@ -98,7 +98,7 @@ function getCiteKey(item) {
   }
   else {
     // Fake citekeys for standalone notes
-    return splitStandaloneTitle(item.getField("title")[0];
+    return splitStandaloneTitle(item.getField("title"))[0];
   }
 }
 
@@ -190,9 +190,9 @@ function getRelatedItems(item) {
         relatedItemsArray.push(`${formatInternalLink(relatedItem.getField("title"))}`);
       }
     }
+    return `* Related: ${relatedItemsArray.join(", ")}\n`;
   }
-
-  return `* Related: ${relatedItemsArray.join(", ")}\n`;
+  return ``;
 }
 
 function getMetadata(item) {
@@ -271,7 +271,7 @@ function getMetadata(item) {
   // Also export standalone note body content
   if (Zotero.ItemTypes.getName(item.itemTypeID) == "note") {
     let noteContent = item.getNote();
-    metadataString += `\n ${noteToMarkdown(noteContent).content}\n`;
+    metadataString += `\n${noteToMarkdown(noteContent).content}\n`;
   }
 
   return metadataString;
@@ -384,6 +384,8 @@ function formatNoteTitle(titleString) {
 
 function noteToMarkdown(noteContent) {
   const domParser = Components.classes["@mozilla.org/xmlextras/domparser;1"].createInstance(Components.interfaces.nsIDOMParser),
+    strikethroughRegExp = new RegExp(
+      "<span style=\"text-decoration: line-through;\">(.*)</span>", "gi"),
     mapObj = {
       "<p>": "",
       "</p>": "",
@@ -391,8 +393,11 @@ function noteToMarkdown(noteContent) {
       "</strong>": "**",
       "<b>": "**",
       "</b>": "**",
-      "<u>": "#### ",
-      "</u>": "",
+      "<u>": "**",
+      "</u>": "**",
+      "</span><span style=\"text-decoration: underline;\">": "",
+      "<span style=\"text-decoration: underline;\">": "**",
+      "</span>": "**",
       "<em>": "*",
       "</em>": "*",
       "<blockquote>": "> ",
@@ -412,13 +417,19 @@ function noteToMarkdown(noteContent) {
       noteMD.title = formatNoteTitle(para.textContent);
 
       // Include title paragraph in body of note but strip out citeKey
-      para.textContent = splitStandaloneTitle(para.textContent)[1];
+      // (using innerHTML rather than textContent to support formatting)
+      para.innerHTML = splitStandaloneTitle(para.innerHTML)[1];
     }
 
     if (para.innerHTML) {
       for (const link of para.getElementsByTagName("a")) {
         link.outerHTML = htmlLinkToMarkdown(link);
       }
+
+      const strikethroughInner = para.innerHTML.replace(strikethroughRegExp, function (p1) {
+        return `~~`+p1+`~~`;
+      });
+      para.innerHTML = strikethroughInner;
 
       const parsedInner = para.innerHTML.replace(re, function (matched) {
         // tslint:disable-line:only-arrow-functions
@@ -431,11 +442,12 @@ function noteToMarkdown(noteContent) {
         continue;
       }
 
-      if (para.innerHTML.startsWith("\"")) {
-        noteString += `> ${para.textContent}\n\n`;
-        continue;
-      } // Handle lists
-
+      // if (para.innerHTML.startsWith("\"")) {
+      //   noteString += `> ${para.textContent}\n\n`;
+      //   continue;
+      // }
+      
+      // Handle lists
 
       if (para.outerHTML.startsWith("<ul>")) {
         formatLists(para, "-");
