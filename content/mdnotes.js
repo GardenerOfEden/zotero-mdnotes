@@ -385,7 +385,7 @@ function formatNoteTitle(titleString) {
 function noteToMarkdown(noteContent) {
   const domParser = Components.classes["@mozilla.org/xmlextras/domparser;1"].createInstance(Components.interfaces.nsIDOMParser),
     strikethroughRegExp = new RegExp(
-      "<span style=\"text-decoration: line-through;\">(.*)</span>", "gi"),
+      "(<span style=\"text-decoration: line-through;\">)(.*)(</span>)", "gi"),
     mapObj = {
       "<p>": "",
       "</p>": "",
@@ -428,9 +428,10 @@ function noteToMarkdown(noteContent) {
         link.outerHTML = htmlLinkToMarkdown(link);
       }
 
-      const strikethroughInner = para.innerHTML.replace(strikethroughRegExp, function (p1) {
-        return `~~`+p1+`~~`;
-      });
+      const strikethroughInner = para.innerHTML.replace(strikethroughRegExp,
+        function (match, p1, p2, p3) {
+          return `~~`+p2+`~~`;
+        });
       para.innerHTML = strikethroughInner;
 
       const parsedInner = para.innerHTML.replace(re, function (matched) {
