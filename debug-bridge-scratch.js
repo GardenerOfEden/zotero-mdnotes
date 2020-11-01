@@ -6,6 +6,14 @@ if (items) {
     // return JSON.stringify(items[0]) + "\nitem.isNote() : " + items[0].isNote();
 }
 
+const squareBracketsRegExp = /(\[)(.*)(\])/i;
+const squareBracketsInner = '[Hello world]'.replace(squareBracketsRegExp,
+        function (match, p1, p2, p3) {
+          return '\\[' + p2 + '\\]';
+        });
+return squareBracketsInner;
+
+
 return Zotero.ItemTypes;
 
 Zotero.debug("Hello world!")

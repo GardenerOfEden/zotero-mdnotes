@@ -13,7 +13,7 @@
 
   <popup id="zotero-itemmenu">
     <menuseparator id="id-mdnotes-separator"/>
-    <menuitem id="id-mdnotes-batch-export-item" label="Batch export to md (2011012138)" tooltiptext="Create all markdown files for the selected items" 
+    <menuitem id="id-mdnotes-batch-export-item" label="Batch export to md (2011012213)" tooltiptext="Create all markdown files for the selected items" 
       oncommand="Zotero.Mdnotes.run('batchExport')"/>
 
     <menuitem id="id-mdnotes-create-notes-file" label="Create Notes file" 
