@@ -455,6 +455,14 @@ function noteToMarkdown(noteContent) {
       });
       para.innerHTML = parsedInner;
 
+      // Non-greedy match for closing bracket across anything *except* further opening brackets
+      const angleBracketsRegExp = /(<)([^<]*?)(>)/gi;
+      const angleBracketsInner = para.innerHTML.replace(angleBracketsRegExp,
+        function (match, p1, p2, p3) {
+          return '\\<' + p2 + '\\>';
+        });
+      para.innerHTML = angleBracketsInner;
+
       if (para.innerHTML.startsWith("\"#")) {
         noteString += para.textContent.substring(1, para.textContent.lastIndexOf("\"")) + "\n\n";
         continue;

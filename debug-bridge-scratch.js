@@ -21,6 +21,16 @@ do {
   while (testStr !== squareBracketsInner);
 return testStr;
 
+
+// Non-greedy match for closing bracket across anything *except* further opening brackets
+const angleBracketsRegExp = /(<)([^<]*?)(>)/gi;
+var testStr = '<unscheduled <inner> >';
+const angleBracketsInner = testStr.replace(angleBracketsRegExp,
+  function (match, p1, p2, p3) {
+    return '\\<' + p2 + '\\>';
+  });
+return angleBracketsInner;
+
 /*
 [Hello [alt] [inner [deep] inner] world]
 [Hello \[alt\] [inner \[deep\] inner] world]
