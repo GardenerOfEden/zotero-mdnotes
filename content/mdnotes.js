@@ -402,7 +402,8 @@ function noteToMarkdown(noteContent) {
       "</em>": "*",
       "<blockquote>": "> ",
       "</blockquote>": "",
-      "<br><br>": "\n\n"
+      "<br><br>": "\n\n",
+      "<br>": "\n"
     },
     re = new RegExp(Object.keys(mapObj).join("|"), "gi");
   var noteMD = {};
@@ -422,6 +423,20 @@ function noteToMarkdown(noteContent) {
     }
 
     if (para.innerHTML) {
+      // Replace `[` and `]` without preceding backslash (already escaped)
+      const squareBracketsOpenRegExp = /([^\\])\[|^\[/gi;
+        const squareBracketsCloseRegExp = /([^\\])\]/gi;
+        var squareBracketsInner = para.innerHTML.replace(squareBracketsOpenRegExp,
+          function (match, p1) {
+            // Start of string alternate match will leave p1 undefined
+            return p1 ? p1 + '\\[' : '\\[';
+          });
+        squareBracketsInner = squareBracketsInner.replace(squareBracketsCloseRegExp,
+          function (match, p1) {
+            return p1 + '\\]';
+          });
+        para.innerHTML = squareBracketsInner;
+        
       for (const link of para.getElementsByTagName("a")) {
         link.outerHTML = htmlLinkToMarkdown(link);
       }
@@ -433,20 +448,6 @@ function noteToMarkdown(noteContent) {
           return `~~`+p2+`~~`;
         });
       para.innerHTML = strikethroughInner;
-
-      // Replace `[` and `]` without preceding backslash (already escaped)
-      const squareBracketsOpenRegExp = /([^\\])\[|^\[/gi;
-      const squareBracketsCloseRegExp = /([^\\])\]/gi;
-      var squareBracketsInner = para.innerHTML.replace(squareBracketsOpenRegExp,
-        function (match, p1) {
-          // Start of string alternate match will leave p1 undefined
-          return p1 ? p1 + '\\[' : '\\[';
-        });
-      squareBracketsInner = squareBracketsInner.replace(squareBracketsCloseRegExp,
-        function (match, p1) {
-          return p1 + '\\]';
-        });
-      para.innerHTML = squareBracketsInner;
 
       const parsedInner = para.innerHTML.replace(re, function (matched) {
         // tslint:disable-line:only-arrow-functions
