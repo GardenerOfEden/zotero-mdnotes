@@ -434,10 +434,17 @@ function noteToMarkdown(noteContent) {
         });
       para.innerHTML = strikethroughInner;
 
-      const squareBracketsRegExp = /(\[)(.*)(\])/i;
-      const squareBracketsInner = para.innerHTML.replace(squareBracketsRegExp,
-        function (match, p1, p2, p3) {
-          return '\\[' + p2 + '\\]';
+      // Replace `[` and `]` without preceding backslash (already escaped)
+      const squareBracketsOpenRegExp = /([^\\])\[|^\[/gi;
+      const squareBracketsCloseRegExp = /([^\\])\]/gi;
+      var squareBracketsInner = para.innerHTML.replace(squareBracketsOpenRegExp,
+        function (match, p1) {
+          // Start of string alternate match will leave p1 undefined
+          return p1 ? p1 + '\\[' : '\\[';
+        });
+      squareBracketsInner = squareBracketsInner.replace(squareBracketsCloseRegExp,
+        function (match, p1) {
+          return p1 + '\\]';
         });
       para.innerHTML = squareBracketsInner;
 
