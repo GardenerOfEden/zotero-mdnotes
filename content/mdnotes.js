@@ -108,13 +108,22 @@ function getDateAdded(item) {
   return dateAddedStr;
 }
 
-function getCiteKey(item) {
-  if (typeof Zotero.BetterBibTeX === "object" && Zotero.BetterBibTeX !== null) {
-    var bbtItem = Zotero.BetterBibTeX.KeyManager.get(item.getField("id"));
-    return bbtItem.citekey;
-  }
+function splitStandaloneTitle(titleText) {
+  // Assuming standalone note titles are 'ID / title' or 'ID */ title'
+  return titleText.split(/ *\*?\/ *(.+)/);
+}
 
-  return "undefined";
+function getCiteKey(item) {
+  if (Zotero.ItemTypes.getName(item.itemTypeID) !== "note") {
+    if (typeof Zotero.BetterBibTeX === "object" && Zotero.BetterBibTeX !== null) {
+      var bbtItem = Zotero.BetterBibTeX.KeyManager.get(item.getField("id"));
+      return bbtItem.citekey;
+    }
+    return "undefined";
+  }
+  else {
+    return splitStandaloneTitle(getItemTitle(item))[0]; //item.getField("title"))[0];
+  }
 }
 
 function getLocalZoteroLink(item) {
@@ -279,14 +288,27 @@ function lowerCaseDashTitle(content) {
   return content.replace(/\s+/g, "-").toLowerCase();
 }
 
+function getItemNotes(item) {
+  // AJR: wrapper to guard against operations on standalone note items
+  // (which throw an exception of item.getNotes() is called)
+  if (Zotero.ItemTypes.getName(item.itemTypeID) !== "note") {
+    return item.getNotes();
+  }
+  return [];
+}
+
 function getZoteroNotes(item) {
-  var noteIDs = item.getNotes();
+  var noteIDs = getItemNotes(item);
   var noteArray = [];
 
   if (noteIDs) {
     for (let noteID of noteIDs) {
       let note = Zotero.Items.get(noteID);
       noteArray.push(note);
+      // AJR : 0.0.7 was...
+      // let noteContent = note.getNote();
+      // noteArray.push(note);
+      // noteArray.push(noteToMarkdown(noteContent));
     }
   }
 
@@ -302,8 +324,17 @@ function getPDFFileLink(attachment) {
   return fileLink;
 }
 
+function getItemAttachments(item) {
+  // AJR: wrapper to guard against operations on standalone note items
+  // (which throw an exception of item.getAttachments() is called)
+  if (Zotero.ItemTypes.getName(item.itemTypeID) !== "note") {
+    return item.getAttachments();
+  }
+  return [];
+}
+
 function getZoteroAttachments(item) {
-  let attachmentIDs = item.getAttachments();
+  let attachmentIDs = getItemAttachments(item);
   var linksArray = [];
   for (let id of attachmentIDs) {
     let attachment = Zotero.Items.get(id);
@@ -370,7 +401,10 @@ function noteToMarkdown(item) {
 
     if (i === 0) {
       noteMD.title = formatNoteTitle(para.textContent);
-      continue;
+
+      // AJR: include title paragraph in body of note but strip out citeKey
+      // (using innerHTML rather than textContent to support formatting)
+      para.innerHTML = splitStandaloneTitle(para.innerHTML)[1];
     }
 
     if (para.innerHTML) {
@@ -419,6 +453,14 @@ function noteToMarkdown(item) {
   return noteMD;
 }
 
+function getItemTitle(item) {
+  if (Zotero.ItemTypes.getName(item.itemTypeID) !== "note") {
+    return item.getField("title");
+  }
+  // Standalone notes do not have titles
+  return item.getField("key");
+}
+
 /*
  * Get an item's base file name from setting's preferences
  */
@@ -464,7 +506,7 @@ function getNCFileName(item, filePrefs) {
   if (item.isNote()) {
     let parentItem = Zotero.Items.get(item.parentItemID);
     let parentTitle = getFileName(parentItem);
-    let noteTitle = item.getField("title");
+    let noteTitle = getItemTitle(item); // item.getField("title");
     fileName = `${parentTitle} - ${noteTitle}`;
   } else {
     fileName = getFileName(item);
@@ -750,7 +792,7 @@ function getObsidianURI(fileName) {
 }
 
 function itemHasAttachment(comparableField, parentItem) {
-  let existingAttachments = parentItem.getAttachments();
+  let existingAttachments = getItemAttachments(parentItem);
   let linkExists = false;
 
   for (let id of existingAttachments) {
@@ -916,7 +958,7 @@ Zotero.Mdnotes =
       let itemFile = await this.getRegularItemContents(item);
       fileArray.push({ name: itemFile.name, content: itemFile.content });
 
-      let noteIDs = item.getNotes();
+      let noteIDs = getItemNotes(item);
       if (noteIDs) {
         for (let noteID of noteIDs) {
           let note = Zotero.Items.get(noteID);
@@ -996,8 +1038,8 @@ Zotero.Mdnotes =
         .getSelectedItems()
         .filter(
           (item) =>
-            Zotero.ItemTypes.getName(item.itemTypeID) !== "attachment" &&
-            Zotero.ItemTypes.getName(item.itemTypeID) !== "note"
+          Zotero.ItemTypes.getName(item.itemTypeID) !== "attachment" //&&
+          // Zotero.ItemTypes.getName(item.itemTypeID) !== "note"
         );
       await Zotero.Schema.schemaUpdatePromise;
 
