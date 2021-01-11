@@ -97,7 +97,7 @@ function day_of_the_month(d) {
 }
 
 function get_month_mm_format(d) {
-  return (d.getMonth() < 10 ? "0" : "") + d.getMonth() + 1;
+  return (d.getMonth() < 10 ? "0" : "") + (d.getMonth() + 1);
 }
 
 function getDateAdded(item) {
