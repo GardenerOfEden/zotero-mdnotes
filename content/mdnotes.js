@@ -122,7 +122,7 @@ function getCiteKey(item) {
     return "undefined";
   }
   else {
-    return splitStandaloneTitle(getItemTitle(item))[0]; //item.getField("title"))[0];
+    return splitStandaloneTitle(item.getField("title"))[0]; // getItemTitle(item))[0];
   }
 }
 
@@ -197,7 +197,7 @@ function getRelatedItems(item) {
       } else if (relatedItem.isNote() && !relatedItem.isTopLevelItem()) {
         linkContent = getZNoteFileName(relatedItem);
       } else {
-        linkContent = relatedItem.getField("title");
+        linkContent = splitStandaloneTitle(relatedItem.getField("title"))[0];
       }
 
       relatedItemsArray.push(linkContent);
@@ -294,7 +294,8 @@ function getItemNotes(item) {
   if (Zotero.ItemTypes.getName(item.itemTypeID) !== "note") {
     return item.getNotes();
   }
-  return [];
+  // Standalone notes return themselves to trigger notes export template
+  return [item.id];
 }
 
 function getZoteroNotes(item) {
@@ -447,19 +448,23 @@ function noteToMarkdown(item) {
   noteMD.related = getRelatedItems(item);
 
   let parentItem = Zotero.Items.get(item.parentItemID);
+  if (!parentItem) {
+    // Standalone notes have no parent
+    parentItem = item;
+  }
   noteMD.mdnotesFileName = getMDNoteFileName(parentItem);
   noteMD.metadataFileName = getZMetadataFileName(parentItem);
 
   return noteMD;
 }
 
-function getItemTitle(item) {
-  if (Zotero.ItemTypes.getName(item.itemTypeID) !== "note") {
-    return item.getField("title");
-  }
-  // Standalone notes do not have titles
-  return item.getField("key");
-}
+// function getItemTitle(item) {
+//   if (Zotero.ItemTypes.getName(item.itemTypeID) !== "note") {
+//     return item.getField("title");
+//   }
+//   // Standalone notes do not have titles
+//   return item.getField("key");
+// }
 
 /*
  * Get an item's base file name from setting's preferences
@@ -503,11 +508,17 @@ function getZoteroNoteTitles(item) {
  */
 function getNCFileName(item, filePrefs) {
   let fileName;
-  if (item.isNote()) {
+  if (Zotero.ItemTypes.getName(item.itemTypeID) == "note") { //item.isNote()) {
     let parentItem = Zotero.Items.get(item.parentItemID);
-    let parentTitle = getFileName(parentItem);
-    let noteTitle = getItemTitle(item); // item.getField("title");
-    fileName = `${parentTitle} - ${noteTitle}`;
+    if (parentItem) {
+      let parentTitle = getFileName(parentItem);
+      let noteTitle = item.getField("title"); //getItemTitle(item);
+      fileName = `${parentTitle} - ${noteTitle}`;
+    }
+    else {
+      // Standalone notes have no parent
+      fileName = getFileName(item);
+    }
   } else {
     fileName = getFileName(item);
   }
